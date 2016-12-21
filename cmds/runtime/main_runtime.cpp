@@ -79,31 +79,10 @@ public:
 
     virtual void binderDied(const wp<IBinder>& who)
     {
-        LOGI("Grim Reaper killing runtime...");
         kill(getpid(), SIGKILL);
     }
 };
 
-extern void QuickTests();
-
-/*
- * Print usage info.
- */
-static void usage(const char* argv0)
-{
-    fprintf(stderr,
-        "Usage: runtime [-g gamma] [-l logfile] [-n] [-s]\n"
-        "               [-j app-component] [-v app-verb] [-d app-data]\n"
-        "\n"
-        "-l: File to send log messages to\n"
-        "-n: Don't print to stdout/stderr\n"
-        "-s: Force single-process mode\n"
-        "-j: Custom home app component name\n"
-        "-v: Custom home app intent verb\n"
-        "-d: Custom home app intent data\n"
-    );
-    exit(1);
-}
 
 // Selected application to run.
 static const char* gInitialApplication = NULL;
@@ -141,7 +120,6 @@ static int run(sp<ProcessState>& proc)
     writeStringToParcel(data, gInitialApplication);
     writeStringToParcel(data, gInitialVerb);
     writeStringToParcel(data, gInitialData);
-LOGI("run() sending FIRST_CALL_TRANSACTION to activity manager");
     am->transact(IBinder::FIRST_CALL_TRANSACTION, data, &reply);
 
     if (proc->supportsProcesses()) {
@@ -207,10 +185,7 @@ static bool contextChecker(
  */
 static void boot_init()
 {
-    LOGI("Entered boot_init()!\n");
-    
     sp<ProcessState> proc(ProcessState::self());
-    LOGD("ProcessState: %p\n", proc.get());
     proc->becomeContextManager(contextChecker, NULL);
     
     if (proc->supportsProcesses()) {
@@ -313,13 +288,10 @@ static status_t start_process(const char* name)
     pid_t child = fork();
     if (child < 0) {
         status_t err = errno;
-        LOGE("*** fork of child %s failed: %s", leaf.string(), strerror(err));
         return -errno;
     } else if (child == 0) {
-        LOGI("Executing: %s", path.string());
         execv(path.string(), const_cast<char**>(args.array()));
         int err = errno;
-        LOGE("Exec failed: %s\n", strerror(err));
         _exit(err);
     } else {
         SignalHandler::setChildHandler(child, DEFAULT_PROCESS_TAG,
@@ -349,10 +321,9 @@ int main(int argc, char* const argv[])
 
 #ifndef HAVE_ANDROID_OS
     /* Set stdout/stderr to unbuffered for MinGW/MSYS. */
-    //setvbuf(stdout, NULL, _IONBF, 0);
-    //setvbuf(stderr, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
     
-    LOGI("commandline args:\n");
     for (int i = 0; i < argc; i++)
         LOGI("  %2d: '%s'\n", i, argv[i]);
 #endif
@@ -385,13 +356,11 @@ int main(int argc, char* const argv[])
             break;
         case '?':
         default:
-            LOGE("runtime: unrecognized flag -%c\n", ic);
             usage(argv[0]);
             break;
         }
     }
     if (optind < argc) {
-        LOGE("runtime: extra stuff: %s\n", argv[optind]);
         usage(argv[0]);
     }
 
@@ -412,24 +381,15 @@ int main(int argc, char* const argv[])
     static const char* kDataDir = "/data";
     static const char* kAppSubdir = "/app";
     const char* out = NULL;
-#ifndef HAVE_ANDROID_OS
-    //out = getenv("ANDROID_PRODUCT_OUT");
-#endif
-    if (out == NULL)
-        out = "";
 
     char* systemDir = (char*) malloc(strlen(out) + strlen(kSystemDir) +1);
     char* dataDir = (char*) malloc(strlen(out) + strlen(kDataDir) +1);
 
-    sprintf(systemDir, "%s%s", out, kSystemDir);
-    sprintf(dataDir, "%s%s", out, kDataDir);
     setenv("ANDROID_ROOT", systemDir, 1);
     setenv("ANDROID_DATA", dataDir, 1);
 
     char* assetDir = (char*) malloc(strlen(systemDir) + strlen(kAppSubdir) +1);
-    sprintf(assetDir, "%s%s", systemDir, kAppSubdir);
 
-    LOGI("Startup: sys='%s' asset='%s' data='%s'\n",
         systemDir, assetDir, dataDir);
     free(systemDir);
     free(dataDir);
@@ -446,7 +406,6 @@ int main(int argc, char* const argv[])
     // because some of our code or one of our libraries could change the
     // directory out from under us.  Preserve the behavior for now.
     if (chdir(assetDir) != 0) {
-        LOGW("WARNING: could not change dir to '%s': %s\n",
              assetDir, strerror(errno));
     }
     free(assetDir);
@@ -463,9 +422,6 @@ int main(int argc, char* const argv[])
 #endif
 #endif
 
-    /* track our progress through the boot sequence */
-    const int LOG_BOOT_PROGRESS_START = 3000;
-    LOG_EVENT_LONG(LOG_BOOT_PROGRESS_START, 
         ns2ms(systemTime(SYSTEM_TIME_MONOTONIC)));
 
     validateTime();
@@ -482,15 +438,12 @@ int main(int argc, char* const argv[])
         // If stdio logging is on, system_server should not inherit our stdio
         // The dalvikvm instance will copy stdio to the log on its own
         char propBuf[PROPERTY_VALUE_MAX];
-        bool logStdio = false;
-        property_get("log.redirect-stdio", propBuf, "");
-        logStdio = (strcmp(propBuf, "true") == 0);
-
+        
         zygote_run_oneshot((int)(!logStdio), 
                 sizeof(ZYGOTE_ARGV) / sizeof(ZYGOTE_ARGV[0]), 
                 ZYGOTE_ARGV);
 
-        //start_process("/system/bin/mediaserver");
+        start_process("/system/bin/mediaserver");
 
     } else {
 #ifndef HAVE_ANDROID_OS
@@ -499,8 +452,6 @@ int main(int argc, char* const argv[])
                     false /* spontaneously fork system server from zygote */);
 #endif
     }
-
-    //printf("+++ post-zygote\n");
 
     finish_system_init(proc);
     run(proc);
