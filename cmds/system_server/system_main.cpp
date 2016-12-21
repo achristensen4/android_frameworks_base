@@ -7,8 +7,6 @@
  * 
  */
 
-#define LOG_TAG "sysproc"
-
 #include <utils/IPCThreadState.h>
 #include <utils/Log.h>
 
@@ -44,17 +42,14 @@ static void blockSignals()
 
 int main(int argc, const char* const argv[])
 {
-    LOGI("System server is starting with pid=%d.\n", getpid());
-
     blockSignals();
     
     // You can trust me, honestly!
-    LOGW("*** Current priority: %d\n", getpriority(PRIO_PROCESS, 0));
     setpriority(PRIO_PROCESS, 0, -1);
 
     #if HAVE_ANDROID_OS
-    //setgid(GID_SYSTEM);
-    //setuid(UID_SYSTEM);
+    setgid(GID_SYSTEM);
+    setuid(UID_SYSTEM);
     #endif
 
     system_init();    
