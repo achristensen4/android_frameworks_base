@@ -5,8 +5,6 @@
  * 
  */
 
-#define LOG_TAG "appproc"
-
 #include <utils/IPCThreadState.h>
 #include <utils/ProcessState.h>
 #include <utils/Log.h>
@@ -27,12 +25,9 @@ void app_usage()
 
 status_t app_init(const char* className, int argc, const char* const argv[])
 {
-    LOGV("Entered app_init()!\n");
-
     AndroidRuntime* jr = AndroidRuntime::getRuntime();
     jr->callMain(className, argc, argv);
     
-    LOGV("Exiting app_init()!\n");
     return NO_ERROR;
 }
 
@@ -47,14 +42,6 @@ public:
     {
     }
 
-#if 0
-    // this appears to be unused
-    const char* getParentDir() const
-    {
-        return mParentDir;
-    }
-#endif
-
     const char* getClassName() const
     {
         return mClassName;
@@ -64,7 +51,6 @@ public:
     {
         sp<ProcessState> proc = ProcessState::self();
         if (proc->supportsProcesses()) {
-            LOGV("App process: starting thread pool.\n");
             proc->startThreadPool();
         }
         
@@ -79,7 +65,6 @@ public:
     {
         sp<ProcessState> proc = ProcessState::self();
         if (proc->supportsProcesses()) {
-            LOGV("App process: starting thread pool.\n");
             proc->startThreadPool();
         }       
     }
@@ -166,13 +151,10 @@ int main(int argc, const char* const argv[])
             runtime.mArgC = argc-i;
             runtime.mArgV = argv+i;
 
-            LOGV("App process is starting with pid=%d, class=%s.\n",
                  getpid(), runtime.getClassName());
             runtime.start();
         }
     } else {
-        LOG_ALWAYS_FATAL("app_process: no class name or --zygote supplied.");
-        fprintf(stderr, "Error: no class name or --zygote supplied.\n");
         app_usage();
         return 10;
     }
