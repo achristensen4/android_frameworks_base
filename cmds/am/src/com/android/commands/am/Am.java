@@ -62,8 +62,6 @@ public class Am {
 
         mAm = ActivityManagerNative.getDefault();
         if (mAm == null) {
-            System.err.println("Error type 2");
-            System.err.println("Error: Unable to connect to activity manager; is the system running?");
             showUsage();
             return;
         }
