@@ -156,7 +156,7 @@ int main(int argc, const char* const argv[])
         }
     } else {
         app_usage();
-        return 10;
+        return 0;
     }
 
 }
